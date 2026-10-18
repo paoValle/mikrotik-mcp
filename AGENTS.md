@@ -106,6 +106,8 @@ The version is computed by GitVersion from the commit messages: `feat:` raises t
 
 A push to `master` runs the release workflows only when it changes a shipped file: `src/**`, `pyproject.toml`, `requirements.txt`, `Dockerfile`, `.dockerignore`, `docker-entrypoint.sh` or `server.json`. Then it publishes to PyPI, the MCP registry and GHCR and creates a GitHub release. Changes to docs, tests, workflows or other markdown do not release. `server.json` and the README `mcp-name` marker must name the same registry entry.
 
+Releases are queued, one at a time. When several merges land within a few minutes, a release that is still waiting is cancelled in favour of the newest one, which publishes everything merged so far under one version; seeing cancelled runs in Actions is expected. Wait for the last run to finish before checking PyPI or GHCR.
+
 ## Documentation
 
 `docs/` is the source of the documentation; the website at mikrotik-mcp.com is built from the separate `wiresage/mikrotik-mcp-website` repository. When a tool's parameters change, update its page under `docs/reference/`.

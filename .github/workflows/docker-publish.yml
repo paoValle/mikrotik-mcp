@@ -53,6 +53,16 @@ on:
       - 'docker-entrypoint.sh'
       - 'server.json'
 
+# One image build at a time, for the same reason as in publish.yml. Builds for
+# one version push the same tags (:X.Y.Z, :X.Y, :latest), so two overlapping
+# runs let whichever finishes last decide what :latest points at, which can be
+# the older commit. Queued, the newest build always finishes last. A build that
+# is still waiting is replaced by a newer one; the newer one has the same code
+# plus more.
+concurrency:
+  group: docker
+  cancel-in-progress: false
+
 jobs:
   docker:
     runs-on: ubuntu-latest

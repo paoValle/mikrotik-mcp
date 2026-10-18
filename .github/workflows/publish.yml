@@ -23,6 +23,9 @@
 # Triggers:
 #   - Push to master branch that changes a shipped file (see the paths
 #     guard below); docs-, test- and CI-only pushes do not release
+#   - Runs are queued one at a time (see the concurrency block below); when
+#     several merges land together only the newest waiting run is kept, and it
+#     releases all of them
 #
 # Requirements:
 #   - GitVersion.yml configuration file in repository root
@@ -52,6 +55,21 @@ on:
       - '.dockerignore'
       - 'docker-entrypoint.sh'
       - 'server.json'
+
+# Releases run one at a time. The version comes from the tags that exist when a
+# run starts, and the tag is only pushed at the very end of the run. Two runs
+# that overlap therefore compute the same version: the first uploads it, the
+# second is skipped by skip-existing (its commit never reaches PyPI) and then
+# fails on the tag and on the MCP registry. Queued like this, a run starts
+# after the previous one has tagged, sees that tag and gets the next version.
+#
+# cancel-in-progress stays false so a release that is already uploading is
+# never interrupted. A run that is still waiting is replaced by a newer one,
+# which is safe: each run releases master up to its own commit, so the newest
+# run also carries everything the replaced one would have.
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
   version:
@@ -212,7 +230,20 @@ jobs:
         run: ./mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+        run: |
+          # The registry refuses a version it already has. That happens when a
+          # run is re-run, or when PyPI skipped the upload because the version
+          # was already there. It does not mean this release failed.
+          if OUT=$(./mcp-publisher publish 2>&1); then
+            echo "$OUT"
+          else
+            echo "$OUT"
+            if echo "$OUT" | grep -q "cannot publish duplicate version"; then
+              echo "Version already in the MCP registry, skipping."
+            else
+              exit 1
+            fi
+          fi
 
   create-release:
     runs-on: ubuntu-latest
@@ -236,7 +267,9 @@ jobs:
           # Using a pre-release tag caused GitVersion to lock onto the same
           # major.minor.patch indefinitely, regardless of commit type.
           TAG="v${{ needs.version.outputs.majorMinorPatch }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          # Ask the remote, not the local clone: the clone was made before any
+          # tag that another run pushed in the meantime.
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists — skipping."
           else
             git tag -a "$TAG" -m "Release $TAG (package ${{ needs.version.outputs.version }})"
