@@ -124,7 +124,7 @@ async def mikrotik_create_queue_type(
             type_id = result.strip()
             details_cmd = f"/queue type print detail where .id={type_id}"
             details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-            if details.strip():
+            if has_item_rows(details):
                 return f"Queue type created successfully:\n\n{details}"
             return f"Queue type created with ID: {type_id}"
         elif "failure:" in result.lower() or "error" in result.lower():
@@ -133,7 +133,7 @@ async def mikrotik_create_queue_type(
     # Verify by fetching by name
     details_cmd = f'/queue type print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-    if details.strip():
+    if has_item_rows(details):
         return f"Queue type created successfully:\n\n{details}"
     return "Queue type creation completed but unable to verify."
 
@@ -288,12 +288,12 @@ async def mikrotik_create_queue_tree(
     """
     await ctx.info(f"Creating queue tree: name={name}, parent={parent}")
 
-    cmd = f"/queue tree add name={name} parent={parent}"
+    cmd = f'/queue tree add name="{name}" parent="{parent}"'
 
     if queue is not None:
-        cmd += f" queue={queue}"
+        cmd += f' queue="{queue}"'
     if packet_mark is not None:
-        cmd += f" packet-mark={packet_mark}"
+        cmd += f' packet-mark="{packet_mark}"'
     if max_limit is not None:
         cmd += f" max-limit={max_limit}"
     if limit_at is not None:
@@ -320,7 +320,7 @@ async def mikrotik_create_queue_tree(
             tree_id = result.strip()
             details_cmd = f"/queue tree print detail where .id={tree_id}"
             details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-            if details.strip():
+            if has_item_rows(details):
                 return f"Queue tree created successfully:\n\n{details}"
             return f"Queue tree created with ID: {tree_id}"
         elif "failure:" in result.lower() or "error" in result.lower():
@@ -328,7 +328,7 @@ async def mikrotik_create_queue_tree(
 
     details_cmd = f'/queue tree print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-    if details.strip():
+    if has_item_rows(details):
         return f"Queue tree created successfully:\n\n{details}"
     return "Queue tree creation completed but unable to verify."
 
@@ -566,7 +566,7 @@ async def mikrotik_create_simple_queue(
             queue_id = result.strip()
             details_cmd = f"/queue simple print detail where .id={queue_id}"
             details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-            if details.strip():
+            if has_item_rows(details):
                 return f"Simple queue created successfully:\n\n{details}"
             return f"Simple queue created with ID: {queue_id}"
         elif "failure:" in result.lower() or "error" in result.lower():
@@ -574,7 +574,7 @@ async def mikrotik_create_simple_queue(
 
     details_cmd = f'/queue simple print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx, device=device)
-    if details.strip():
+    if has_item_rows(details):
         return f"Simple queue created successfully:\n\n{details}"
     return "Simple queue creation completed but unable to verify."
 
